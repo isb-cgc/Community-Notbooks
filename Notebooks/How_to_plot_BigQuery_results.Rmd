@@ -54,7 +54,7 @@ Getting setup
 ```{r}
 library(bigrquery)
 library(ggplot2)
-billing <- 'isb-cgc-02-0001' ### Replace with your project ID!! ###
+billing <- 'isb-cgc-02-0001' ### Replace with your project ID!! ### 
 ```
 
 ## Making barplots
