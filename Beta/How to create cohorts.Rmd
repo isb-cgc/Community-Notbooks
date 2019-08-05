@@ -187,6 +187,8 @@ for (field in columns) {
 cat("\n Found ", numInteresting, "potentially interesting features: \n", iList)
 ```
 
+The above helps us narrow down on which fields are likely to be the most useful, but if you have a specific interest, for example in menopause or HPV status, you can still look at those in more detail very easily: 
+
 ```{r}
 # Using pipes and dbplyr to Query:
 menopause_stat_query <- tcga_clinical %>%
