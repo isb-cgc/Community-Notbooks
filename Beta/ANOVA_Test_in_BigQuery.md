@@ -1,30 +1,52 @@
----
-title: "One-Way ANOVA Test in BigQuery"
-output: rmarkdown::github_document
----
+One-Way ANOVA Test in BigQuery
+================
 
-In this notebook, we will cover how to do a one-way ANOVA test in BigQuery. This statistical test can be used to determine whether there is a statistically significant difference between the means of two or more independent groups. Although in this example, I’m only looking at two groups, it would not be difficult to extend this to any number of groups, assuming there is a reasonable number of samples within each group.
+In this notebook, we will cover how to do a one-way ANOVA test in
+BigQuery. This statistical test can be used to determine whether there
+is a statistically significant difference between the means of two or
+more independent groups. Although in this example, I’m only looking at
+two groups, it would not be difficult to extend this to any number of
+groups, assuming there is a reasonable number of samples within each
+group.
 
-Consider the model $y_{ij} = m + a_i + e_{ij}$, $y_{ij}$ is a continuous variable over samples $j$, in groups $i$, and $a_i$ is a constant for each group $i$, and $e_{ij}$ is a gaussian error term with mean 0.
+Consider the model \(y_{ij} = m + a_i + e_{ij}\), \(y_{ij}\) is a
+continuous variable over samples \(j\), in groups \(i\), and \(a_i\) is
+a constant for each group \(i\), and \(e_{ij}\) is a gaussian error term
+with mean 0.
 
-Using this model, we are describing the data as being sampled from groups, with each group having a mean value equal to $m + a_i$. The null hypothesis is that each of the group means is the same (ie that the ai terms are zero), while the alternative hypothesis is that at least one of the ai terms is not zero.
+Using this model, we are describing the data as being sampled from
+groups, with each group having a mean value equal to \(m + a_i\). The
+null hypothesis is that each of the group means is the same (ie that the
+ai terms are zero), while the alternative hypothesis is that at least
+one of the ai terms is not zero.
 
-We use the F-test to compare these two hypotheses. To compute the test statistic, we compute the within-group variation and the between-group variation. Recall that sample variance is defined as the sum of squared differences between observations and the mean, divided by the number of samples (normalized).
+We use the F-test to compare these two hypotheses. To compute the test
+statistic, we compute the within-group variation and the between-group
+variation. Recall that sample variance is defined as the sum of squared
+differences between observations and the mean, divided by the number of
+samples (normalized).
 
-First, we will need to import the required libraries and create a client variable. For more information see ['Quick Start Guide to ISB-CGC'](INSERT LINK) and alternative authentication methods can be found [here](https://googleapis.github.io/google-cloud-python/latest/core/auth.html).
+First, we will need to import the required libraries and create a client
+variable. For more information see [‘Quick Start Guide to
+ISB-CGC’](INSERT%20LINK) and alternative authentication methods can be
+found
+[here](https://googleapis.github.io/google-cloud-python/latest/core/auth.html).
 
-```{r Load Libraries}
+``` r
 library(bigrquery)
 library(dplyr)
 ```
 
-Then let us set up the billing variables we will be using in this notebook:
-```{r Set Up Variables}
+Then let us set up the billing variables we will be using in this
+notebook:
+
+``` r
 billing <- 'isb-cgc-02-0001' # Insert your project ID in the ''
 ```
 
 Let’s look at the query:
-```{r ANOVA Query}
+
+``` r
 anova_query = "
 WITH
   -- using standard SQL,
@@ -174,7 +196,7 @@ FROM
 "
 ```
 
-```{r Run the ANOVA Query}
+``` r
 # To see the R console output with query processing information, turn queit to FALSE
 anova_result <- bq_project_query(billing, anova_query, quiet = TRUE)
 # Transform the query result into a tibble
@@ -182,9 +204,19 @@ anova_result <- bq_table_download(anova_result, quiet = TRUE)
 anova_result
 ```
 
-OK, so let’s check our work. Using the BRCA cohort and TP53 as our gene, we have 375 samples with a variant in this gene. We’re going to look at whether the type of variant is related to the gene expression we observe. If we just pull down the data using the ‘cohort’ subtable (as above), we can get a small data frame, which let’s us do the standard F stat table in R.
+    ## # A tibble: 1 x 5
+    ##       n     k mean_sq_between mean_sq_within     F
+    ##   <int> <int>           <dbl>          <dbl> <dbl>
+    ## 1   375     3            6.23         0.0956  65.1
 
-```{r Create dat Query}
+OK, so let’s check our work. Using the BRCA cohort and TP53 as our gene,
+we have 375 samples with a variant in this gene. We’re going to look at
+whether the type of variant is related to the gene expression we
+observe. If we just pull down the data using the ‘cohort’ subtable (as
+above), we can get a small data frame, which let’s us do the standard F
+stat table in R.
+
+``` r
 dat_query = "
 WITH
   -- using standard SQL,
@@ -239,7 +271,7 @@ SELECT sample_barcode, group_name, expr
 FROM cohort"
 ```
 
-```{r Run dat Query}
+``` r
 # To see the R console output with query processing information, turn queit to FALSE
 dat <- bq_project_query(billing, dat_query, quiet = TRUE)
 # Transform the query result into a tibble
@@ -247,10 +279,41 @@ dat <- bq_table_download(dat, quiet = TRUE)
 dat
 ```
 
-```{r View the mean and sd per group}
+    ## # A tibble: 375 x 3
+    ##    sample_barcode   group_name  expr
+    ##    <chr>            <chr>      <dbl>
+    ##  1 TCGA-A8-A084-01A INS         2.49
+    ##  2 TCGA-E2-A108-01A SNP         3.17
+    ##  3 TCGA-EW-A6SD-01A SNP         3.45
+    ##  4 TCGA-AR-A1AR-01A DEL         2.84
+    ##  5 TCGA-D8-A1J9-01A SNP         3.11
+    ##  6 TCGA-AO-A03V-01A SNP         3.23
+    ##  7 TCGA-D8-A13Y-01A DEL         2.64
+    ##  8 TCGA-D8-A27N-01A SNP         3.04
+    ##  9 TCGA-BH-A0EE-01A DEL         2.42
+    ## 10 TCGA-AC-A8OQ-01A SNP         2.86
+    ## # ... with 365 more rows
+
+``` r
 dat %>% group_by(group_name) %>% summarize(mean=mean(expr), sd=sd(expr))
 ```
 
-```{r ANOVA Test}
+    ## # A tibble: 3 x 3
+    ##   group_name  mean    sd
+    ##   <chr>      <dbl> <dbl>
+    ## 1 DEL         2.79 0.322
+    ## 2 INS         2.64 0.116
+    ## 3 SNP         3.22 0.313
+
+``` r
 anova(lm(data=dat, expr~group_name))
 ```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Response: expr
+    ##             Df Sum Sq Mean Sq F value    Pr(>F)    
+    ## group_name   2 12.460  6.2302  65.147 < 2.2e-16 ***
+    ## Residuals  372 35.576  0.0956                      
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
